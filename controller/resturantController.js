@@ -9,8 +9,8 @@ const fs = require("fs");
 
 exports.newResturrant = async (req, res) => {
     try {
-        console.log(req.body)
-        console.log(req.files)
+      //  console.log(req.body)
+       // console.log(req.files)
       const { 
         businessName,
         address, 
@@ -21,6 +21,7 @@ exports.newResturrant = async (req, res) => {
         confirmPassword} = req.body;
 
       const isEmail = await Resturrant.findOne({ email });
+      console.log(isEmail)
       if (password === confirmPassword) {
         if (isEmail) {
           res.status(400).json({
@@ -29,7 +30,9 @@ exports.newResturrant = async (req, res) => {
         } else {
           const salt = bcryptjs.genSaltSync(10);
           const hash = bcryptjs.hashSync(password, salt);
+          console.log(hash)
          const image =await cloudinary.uploader.upload(req.files.profileImage.tempFilePath)
+         console.log(image)
           const resturrant = await Resturrant.create({
         businessName,
         address, 
@@ -44,7 +47,7 @@ exports.newResturrant = async (req, res) => {
           console.log(token)
           const subject = "New Resturrant";
           const link = `${req.protocol}://${req.get("host")}//verify/${token}`;
-          const message = `welcome onboard Resturrant kindly use this ${link} to verify your account`;
+          const message = `welcome Resturrant kindly use this ${link} to verify your account`;
           const data = {
             email: email,
             subject,
@@ -128,24 +131,24 @@ exports.newResturrant = async (req, res) => {
     try {
       const { email, password } = req.body;
       const resturrant = await Resturrant.findOne({ email });
-      //console.log(user);
+      console.log(resturrant);
       let checkPassword = false;
       if (resturrant) {
         checkPassword = bcryptjs.compareSync(password, resturrant.password);
       }
       if (!resturrant || !checkPassword) {
         res.status(400).json({
-          message: "invalid credentials",
+          message: "invalid Login Please try again",
         });
       } else if (resturrant.isBlocked) {
         res.status(200).json({
             message: "This Resturrant is blocked"
          });
       } else if (!resturrant.isVerified) {
-        const token = await genToken(resturrant._id, "20m");
+        const token = await genToken(resturrant._id, "1d");
         const subject = "verify now";
         const link = `${req.protocol}://${req.get("host")}/trippy/verify/${token}`;
-        const message = ` kindly use this ${link} to verify your account`;
+        const message = ` kindly use this ${link} to Re-verify your account`;
         const data = {
           email: email,
           subject,
@@ -157,7 +160,7 @@ exports.newResturrant = async (req, res) => {
         });
       } else {
         resturrant.isloggedin = true;
-        const token = await genToken(user._id, "1d");
+        const token = await genToken(resturrant._id, "1d");
         await resturrant.save();
   
         res.status(200).json({

@@ -30,9 +30,20 @@ const resturrantSchema = new mongoose.Schema({
     confirmPassword:{
         type: String,
         require: true,
-        
-    }
+    },
+      isloggedin: {
+        type: Boolean,
+        default: false,
+      },
+      isVerified: {
+        type: Boolean,
+        default: false,
+      },
+      isBlocked: {
+        type: Boolean,
+        default: false,
+      },
 
-});
+}, { timestamps: true });
 const resturrantModel = mongoose.model("Resturrant", resturrantSchema)
 module.exports = resturrantModel
