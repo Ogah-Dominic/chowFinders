@@ -1,14 +1,12 @@
 const jwt = require("jsonwebtoken");
 const User = require("../model/resturrantModel");
 const { decodeToken } = require("../Utili/jwt");
-
 // auth middleware
-const userAuth = async (req, res, next) => {
+const resturrantAuth = async (req, res, next) => {
   try {
     if (req.headers.authorization) {
       const hasAuthorization = req.headers.authorization;
       const token = hasAuthorization.split(" ")[1];
-
       const user = await decodeToken(token);
       req.user = user;
       if (req.user?.isloggedin) {
@@ -27,7 +25,6 @@ const userAuth = async (req, res, next) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 const isAdmin = async (req, res, next) => {
   try {
     if (req.user.isAdmin) {
@@ -40,4 +37,16 @@ const isAdmin = async (req, res, next) => {
   }
 };
 
-module.exports = { userAuth, isAdmin };
+const isRole = async (req, res, next) => {
+  try {
+    if (req.user.role==="admin") {
+      next();
+    } else {
+      res.status(401).json({ message: " not an admin" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { resturrantAuth, isAdmin,isRole };

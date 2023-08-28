@@ -1,27 +1,21 @@
-const Resturrant = require('../model/resturrantModel')
+const restaurantModel = require('../model/resturrantModel')
 const cloudinary = require("../Utili/cloudinary")
 const bcryptjs = require("bcryptjs")
-const jwt = require("jsonwebtoken")
-
-const { sendEmail } = require("../middlewares/sendEmail");
+const { sendEmail } = require("../middlewares/sendEmail"  );
 const { genToken, decodeToken } = require("../Utili/jwt");
 const fs = require("fs");
-
-exports.newResturrant = async (req, res) => {
+exports.registerResturant = async (req, res) => {
     try {
-      //  console.log(req.body)
-       // console.log(req.files)
-      const { 
+      const{ 
         businessName,
-        address, 
-        email, 
-        menu, 
+        address,
+        // location, 
+        email,  
         phoneNumber, 
         password,
         confirmPassword} = req.body;
-
-      const isEmail = await Resturrant.findOne({ email });
-      console.log(isEmail)
+        
+      const isEmail = await restaurantModel.findOne({ email });
       if (password === confirmPassword) {
         if (isEmail) {
           res.status(400).json({
@@ -30,24 +24,22 @@ exports.newResturrant = async (req, res) => {
         } else {
           const salt = bcryptjs.genSaltSync(10);
           const hash = bcryptjs.hashSync(password, salt);
-          console.log(hash)
-         const image =await cloudinary.uploader.upload(req.files.profileImage.tempFilePath)
-         console.log(image)
-          const resturrant = await Resturrant.create({
+          const image =await cloudinary.uploader.upload(req.files.profileImage.tempFilePath)
+          const restaurant = await restaurantModel.create({
         businessName,
-        address, 
-        email: email.toLowerCase(), 
-        menu, 
+        address,
+        // location, 
+        email: email.toLowerCase(),  
         phoneNumber, 
         password:hash,
         confirmPassword: hash,
         profileImage: image.secure_url
           });
-          const token = await genToken(resturrant._id, "1d");
+          const token = await genToken(restaurant._id, "1d");
           console.log(token)
-          const subject = "New Resturrant";
-          const link = `${req.protocol}://${req.get("host")}//verify/${token}`;
-          const message = `welcome Resturrant kindly use this ${link} to verify your account`;
+          const subject = "New restaurant";
+          const link = `${req.protocol}:${req.get("host")}${token}`;
+          const message = `Welcome onboard esteemed customer, kindly use this ${link} to verify your account`;
           const data = {
             email: email,
             subject,
@@ -56,7 +48,7 @@ exports.newResturrant = async (req, res) => {
           sendEmail(data);
           res.status(200).json({
             success: true,
-            data: resturrant,
+            data: restaurant,
           });
         }
       } else {
@@ -65,25 +57,26 @@ exports.newResturrant = async (req, res) => {
         });
       }
     } catch (error) {
+        console.error(error)
       res.status(500).json({
         message: error.message,
       });
     }
   };
 
-  exports.ResturrantVerify = async (req, res) => {
+
+  exports.restaurantVerify = async (req, res) => {
     try {
       const { token } = req.params;
       console.log(token);
       //console.log(id);
-      const ResturrantInfo = await decodeToken(token);
-      console.log(ResturrantInfo);
+      const restaurantInfo = await decodeToken(token);
       //const tokens = await jwt.verify(token, process.env.JWT_SECRET);
-      if (ResturrantInfo) {
-        await Resturrant.findByIdAndUpdate(ResturrantInfo._id, { isVerified: true });
-        res.status(200).json({ message: "Resturrant verified" });
+      if (restaurantInfo) {
+        await restaurantModel.findByIdAndUpdate(restaurantInfo._id, { isVerified: true });
+        res.status(200).json({ message: "restaurant verified" });
       } else {
-        throw new Error("error verifying Resturrant, please try again");
+        throw new Error("error verifying restaurant, please try again");
       }
     } catch (error) {
       res.status(500).json({
@@ -95,11 +88,11 @@ exports.newResturrant = async (req, res) => {
   exports.resendEmailVerification = async (req, res) => {
     try {
       const { email } = req.body;
-      const resturrant = await Resturrant.findOne({ email });
-      if (resturrant && !resturrant.isVerified) {
-        const token = await genToken(resturrant._id, "1d");
-        const subject = "New Resturrant";
-        const link = `${req.protocol}://${req.get("host")}//verify/${token}`;
+      const restaurant = await restaurantModel.findOne({ email });
+      if (restaurant && !restaurant.isVerified) {
+        const token = await genToken(restaurant._id, "1d");
+        const subject = "New restaurant";
+        const link = `${req.protocol}://${req.get("host")}/rest/verify/${token}`;
         const message = `welcome! kindly use this ${link} to verify your account`;
         const data = {
           email: email,
@@ -110,13 +103,13 @@ exports.newResturrant = async (req, res) => {
         res.status(200).json({
           message: "verificaton email sent",
         });
-      } else if (resturrant?.isVerified) {
+      } else if (restaurant?.isVerified) {
         res.status(200).json({
-          message: "Resturrant already verified",
+          message: "restaurant already verified",
         });
       } else {
         res.status(404).json({
-          message: `Resturrant with this ${email} not found`
+          message: `restaurant with this ${email} not found`
         });
       }
     } catch (error) {
@@ -125,29 +118,36 @@ exports.newResturrant = async (req, res) => {
       });
     }
   };
-
 // SIGNIN
   exports.signin = async (req, res) => {
     try {
       const { email, password } = req.body;
-      const resturrant = await Resturrant.findOne({ email });
-      console.log(resturrant);
-      let checkPassword = false;
-      if (resturrant) {
-        checkPassword = bcryptjs.compareSync(password, resturrant.password);
-      }
-      if (!resturrant || !checkPassword) {
-        res.status(400).json({
-          message: "invalid Login Please try again",
-        });
-      } else if (resturrant.isBlocked) {
+      const restaurant = await restaurantModel.findOne({ email })
+      if(!restaurant.email){
+        res.status(401).json({
+          message: " wrong email please try again"
+        })
+      }else{
         res.status(200).json({
-            message: "This Resturrant is blocked"
+          data: restaurant
+        });
+      }
+      let checkPassword = false;
+      if (restaurant) {
+        checkPassword = bcryptjs.compareSync(password, restaurant.password);
+      }
+      if (!restaurant || !checkPassword) {
+        res.status(400).json({
+          message: "invalid password Please try again",
+        });
+      } else if (restaurant.isBlocked) {
+        res.status(200).json({
+            message: "Welciome restaurant"
          });
-      } else if (!resturrant.isVerified) {
-        const token = await genToken(resturrant._id, "1d");
+      } else if (!restaurant.isVerified) {
+        const token = await genToken(restaurant._id, "1d");
         const subject = "verify now";
-        const link = `${req.protocol}://${req.get("host")}/trippy/verify/${token}`;
+        const link = `${req.protocol}:${req.get("host")}${token}`;
         const message = ` kindly use this ${link} to Re-verify your account`;
         const data = {
           email: email,
@@ -159,12 +159,12 @@ exports.newResturrant = async (req, res) => {
           message: "you are not verified check your email to verify",
         });
       } else {
-        resturrant.isloggedin = true;
-        const token = await genToken(resturrant._id, "1d");
-        await resturrant.save();
+        restaurant.isloggedin = true;
+        const token = await genToken(restaurant._id, "1d");
+        await restaurant.save();
   
         res.status(200).json({
-             token, resturrant
+             token, restaurant
              });
       }
     } catch (error) {
@@ -173,17 +173,16 @@ exports.newResturrant = async (req, res) => {
       });
     }
   };
-
   exports.forgotPassword = async (req, res) => {
     try {
       const { email } = req.body;
       //create a link with the reset password link and send it to email
-      const resturrant = await Resturrant.findOne({ email });
-      if (resturrant) {
+      const restaurant = await restaurantModel.findOne({ email });
+      if (restaurant) {
         const subject = "forgotten password";
-        const token = await genToken(resturrant._id, "20m");
+        const token = await genToken(restaurant._id, "20m");
         // for better security practice a unique token should be sent to reset password instead of user._id
-        const link = `${req.protocol}://${req.get("host")}/trippy/reset-password/${token}`;
+        const link = `${req.protocol}://${req.get("host")}/reset-password/${token}`;
         const message = `click the ${link} to reset your password`;
         const data = {
           email: email,
@@ -196,7 +195,7 @@ exports.newResturrant = async (req, res) => {
         });
       } else {
         res.status(404).json({
-          message: "Resturrant not found",
+          message: "restaurant not found",
         });
       }
     } catch (error) {
@@ -209,12 +208,12 @@ exports.newResturrant = async (req, res) => {
   exports.resetpassword = async (req, res) => {
     try {
       const { token } = req.params;
-      const { newpassword } = req.body;
+      const { newPassword } = req.body;
       const salt = bcryptjs.genSaltSync(10);
-      const hashedPassword = bcryptjs.hashSync(newpassword, salt);
-      const resturrantInfo = await decodeToken(token);
-      const resturrant = await Resturrant.findByIdAndUpdate(resturrantInfo._id, {password: hashedPassword,});
-      if (resturrant) {
+      const hashedPassword = bcryptjs.hashSync(newPassword, salt);
+      const restaurantInfo = await decodeToken(token);
+      const restaurant = await restaurantModel.findByIdAndUpdate(restaurantInfo._id, {password: hashedPassword,});
+      if (restaurant) {
         res.status(200).json({
           message: "password successfully reset",
         });
@@ -232,13 +231,13 @@ exports.newResturrant = async (req, res) => {
   
   exports.logout = async (req, res) => {
     try {
-      const resturrant = await Resturrant.findById(req.resturrant._id);
+      const restaurant = await restaurantModel.findById(req.user._id);
       const blacklist = [];
       const hasAuthorization = req.headers.authorization;
       const token = hasAuthorization.split(" ")[1];
       blacklist.push(token);
-      user.isloggedin = false;
-      await resturrant.save();
+      restaurant.isloggedin = false;
+      await restaurant.save();
       res.status(200).json({ 
         message: "logged out successfully" 
     });
@@ -248,13 +247,14 @@ exports.newResturrant = async (req, res) => {
       });
     }
   };
-  
+
   exports.getAll = async (req, res) => {
     try {
-      const resturrant = await Resturrant.find();
-      if(resturrant){
+      // const restaurant = await restaurantModel.find().populate('menu');
+      const restaurant = await restaurantModel.find().populate('menus');
+      if(restaurant){
         res.status(200).json({
-            resturrant
+            restaurant
         });
       }
     //   res.json({ users });
@@ -267,11 +267,12 @@ exports.newResturrant = async (req, res) => {
   
   exports.getOne = async (req, res) => {
     try {
-      const { resturrantId } = req.params;
-      const resturrant = await Resturrant.findById(resturrantId);
-      if(resturrant){
+      const { restaurantId } = req.params;
+      // const restaurant = await restaurantModel.findById(restaurantId).populate('menu');
+      const restaurant = await restaurantModel.findById(restaurantId).populate('menus');
+      if(restaurant){
         res.status(200).json({
-            resturrant
+            restaurant
         })
       }
     //   res.json({ user });
@@ -282,24 +283,24 @@ exports.newResturrant = async (req, res) => {
     }
   };
   
-  exports.updateResturrant = async (req, res) => {
+  exports.updaterestaurant = async (req, res) => {
     try {
-      const { resturrantId } = req.params;
+      const { restaurantId } = req.params;
       const { 
-        BusinessName, email,menu, address } = req.body;
-      const resturrant = await Resturrant.findById(resturrantId);
+        businessName, email, address , location} = req.body;
+      const restaurant = await restaurantModel.findById(restaurantId);
       //console.log(req.user._id.toString());
      // console.log(user.id);
-      if (!resturrant) {
-        res.status(404).json({ message: "no resturrant found" });
+      if (!restaurant) {
+        res.status(404).json({ message: "no restaurant found" });
       } else  {
-        const updatedUser = await Resturrant.findByIdAndUpdate(
-            resturrantId,
-          { BusinessName, email, menu, address },
+        const updatedUser = await restaurantModel.findByIdAndUpdate(
+            restaurantId,
+          { businessName, email, address, location },
           { new: true }
         );
   
-        res.status(200).json({ message: "Resturrant updated", updatedUser });
+        res.status(200).json({ message: "restaurant updated", updatedUser });
       } 
       //else {
     //     res
@@ -316,9 +317,9 @@ exports.newResturrant = async (req, res) => {
   //add profile picture
   // update profile
   exports.addProfileImage = async (req, res) => {
-    const { resturrantId } = req.body;
+    const { restaurantId } = req.body;
     try {
-      const profile = await Resturrant.findById(resturrantId);
+      const profile = await restaurantModel.findById(restaurantId);
       if (profile) {
         console.log(req.file);
         let result = null;
@@ -340,7 +341,7 @@ exports.newResturrant = async (req, res) => {
           });
           await profile.save();
   
-          const updated = await Resturrant.findById(userId);
+          const updated = await restaurantModel.findById(userId);
   
           res.json({ message: "profile updated successfully",
           data: updated });
@@ -363,22 +364,22 @@ exports.newResturrant = async (req, res) => {
   
   //Delete
   
-  exports.deleteResturrant = async (req, res) => {
+  exports.deleterestaurant = async (req, res) => {
     try {
-      const { resturrantId } = req.params;
+      const { restaurantId } = req.params;
   
-      const resturrant = await Resturrant.findById(resturrantId);
-      console.log(req.resturrant._id.toString());
-      console.log(resturrant.id);
-      if (!resturrant) {
-        res.status(404).json({ message: "no resturrant found" });
-      } else if (req.resturrant._id.toString() == resturrantId || req.resturrant.isAdmin) {
-        const deletedresturrant = await Resturrant.findByIdAndDelete(resturrantId);
-        res.status(200).json({ message: "resturrant deleted", deletedresturrant });
+      const restaurant = await restaurantModel.findById(restaurantId);
+      console.log(req.user._id.toString());
+      console.log(restaurant.id);
+      if (!restaurant) {
+        res.status(404).json({ message: "no restaurant found" });
+      } else if (req.user._id.toString() == restaurantId || req.user.isAdmin) {
+        const deletedrestaurant = await restaurantModel.findByIdAndDelete(restaurantId);
+        res.status(200).json({ message: "restaurant deleted", deletedrestaurant });
       } else {
         res
           .status(401)
-          .json({ messgae: "you are not authorized to delete this resturrant" });
+          .json({ messgae: "you are not authorized to delete this restaurant" });
       }
     } catch (error) {
       res.status(500).json({
@@ -386,6 +387,39 @@ exports.newResturrant = async (req, res) => {
       });
     }
   };
+
+
+
+
+  // exports.searchlocation = async (req, res) => {
+  //   try {
+
+  //     const search = req.query.search ? {
+  //       $or:[
+  //         {location:{$regex: req.query.search, $options:"i"}}
+  //       ]
+  //     } : {}
+
+  //     const locationdd = await restaurantModel.find(search)
+  //     if(locationdd.length === 0){
+  //       return  res.status(400).json({
+  //         message:"location not found"
+  //       })
+  //     }
+  //       res.status(200).json({
+  //         message:"found",
+  //         data :  locationdd
+
+  //       })
+
+
+  //   } catch (error) {
+  //     res.status(500).json({
+  //       message: error.message,
+  //     });
+  //   }
+  // };
+
   
   
 
