@@ -124,49 +124,47 @@ exports.registerResturant = async (req, res) => {
       const { email, password } = req.body;
       const restaurant = await restaurantModel.findOne({ email })
       if(!restaurant.email){
-        res.status(401).json({
+        res.status(400).json({
           message: " wrong email please try again"
         })
       }else{
-        res.status(200).json({
-          data: restaurant
-        });
+        let checkPassword = false;
+        if (restaurant) {
+          checkPassword = bcryptjs.compareSync(password, restaurant.password);
+        }
+        if (!checkPassword) {
+          res.status(400).json({
+            message: "wrong password Please try again",
+          });
+        } else if (restaurant.isBlocked) {
+          res.status(401).json({
+              message: "restaurant is block"
+           });
+        } else if (!restaurant.isVerified) {
+          const token = await genToken(restaurant._id, "1d");
+          const subject = "verify now";
+          const link = `${req.protocol}:${req.get("host")}${token}`;
+          const message = ` kindly use this ${link} to Re-verify your account`;
+          const data = {
+            email: email,
+            subject,
+            message,
+          };
+          sendEmail(data);
+          res.status(401).json({
+            message: "you are not verified check your email to verify",
+          });
+        } else {
+          restaurant.isloggedin = true;
+          const token = await genToken(restaurant._id, "1d");
+          await restaurant.save();
+    
+          res.status(200).json({
+               token, restaurant
+               });
+        }
       }
-      let checkPassword = false;
-      if (restaurant) {
-        checkPassword = bcryptjs.compareSync(password, restaurant.password);
-      }
-      if (!restaurant || !checkPassword) {
-        res.status(400).json({
-          message: "invalid password Please try again",
-        });
-      } else if (restaurant.isBlocked) {
-        res.status(200).json({
-            message: "Welciome restaurant"
-         });
-      } else if (!restaurant.isVerified) {
-        const token = await genToken(restaurant._id, "1d");
-        const subject = "verify now";
-        const link = `${req.protocol}:${req.get("host")}${token}`;
-        const message = ` kindly use this ${link} to Re-verify your account`;
-        const data = {
-          email: email,
-          subject,
-          message,
-        };
-        sendEmail(data);
-        res.status(401).json({
-          message: "you are not verified check your email to verify",
-        });
-      } else {
-        restaurant.isloggedin = true;
-        const token = await genToken(restaurant._id, "1d");
-        await restaurant.save();
-  
-        res.status(200).json({
-             token, restaurant
-             });
-      }
+      
     } catch (error) {
       res.status(500).json({
         message: error.message,
@@ -176,6 +174,7 @@ exports.registerResturant = async (req, res) => {
   exports.forgotPassword = async (req, res) => {
     try {
       const { email } = req.body;
+      console.log(email);
       //create a link with the reset password link and send it to email
       const restaurant = await restaurantModel.findOne({ email });
       if (restaurant) {

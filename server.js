@@ -15,7 +15,7 @@ app.use(fileUpload({
 }));
 app.use(morgan("dev"));
 
-app.use("/api/v1", resturrantRouter);
+app.use("/api/", resturrantRouter);
 const DB = process.env.DATABASE
 mongoose.connect(DB).then(()=>{
     console.log("Successfully connected to Database")

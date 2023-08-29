@@ -5,7 +5,14 @@ const validateResturrant = (req, res, next)=>{
         phoneNumber: Joi.string().pattern(/^[0-9]{11}$/).required(),
         adress: Joi.string().required(),
         email: Joi.string().required(),
-        password: Joi.string().required(),
+        password: Joi.string().min(8).pattern(/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]*$/).required()
+        .messages({
+            'string.base': 'Password must be a string',
+            'string.empty': 'Password cannot be empty',
+            'string.min': 'Password must be at least {{#limit}} characters long',
+            'any.required': 'Password is required',
+            'string.pattern.base': 'Password must contain at least 1 number or alphebet and 1 symbol',
+          }),
         confirmPassword: Joi.string().required()
     })
 

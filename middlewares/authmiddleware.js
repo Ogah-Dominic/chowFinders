@@ -49,4 +49,4 @@ const isRole = async (req, res, next) => {
   }
 };
 
-module.exports = { resturrantAuth, isAdmin,isRole };
+module.exports = { resturrantAuth, isAdmin, isRole };

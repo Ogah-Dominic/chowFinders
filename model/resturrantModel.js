@@ -15,7 +15,7 @@ const restaurantSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, "email is required"],
-    unique: true
+    unique: false
   },
   profileImage: {
     type: String,
